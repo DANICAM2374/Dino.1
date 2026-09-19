@@ -1,338 +1,700 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dino Runner</title><style>
 body{margin:0;background:#f7f7f7;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:monospace;transition:.5s}body.dark{background:#080808}#gameContainer{width:min(900px,96vw);text-align:center}canvas{width:100%;height:auto;display:block;border:2px solid #111;border-radius:10px;background:#f7f7f7;touch-action:none;user-select:none}body.dark canvas{background:#080808;border-color:#fff}#info{display:flex;justify-content:space-between;margin-top:8px;font-size:13px;color:#555}body.dark #info{color:#ccc}
 </style></head><body><div id="gameContainer"><canvas id="gameCanvas" width="900" height="350"></canvas><div id="info"><span id="status">ESPACIO / TOCA PARA EMPEZAR</span><span id="speedText">🌞 Velocidad 6.00</span></div></div>
-<audio id="day" src="dia.mp3" loop preload="auto"></audio><audio id="night" src="noche.mp3" loop preload="auto"></audio>
+<audio id="music" preload="auto" loop></audio>
 <script>
-const c=document.getElementById("gameCanvas"),x=c.getContext("2d"),st=document.getElementById("status"),sp=document.getElementById("speedText"),day=document.getElementById("day"),night=document.getElementById("night"),g=285;
-let run=0,over=0,score=0,hi=0,frame=0,last=0,timer=60,speed=6,obs=[],phase=-1,currentMusic=null;
+const c=document.getElementById("gameCanvas"),x=c.getContext("2d"),st=document.getElementById("status"),sp=document.getElementById("speedText"),music=document.getElementById("music"),g=285;
+let A=null,run=0,over=0,score=0,hi=0,frame=0,last=0,timer=55,speed=6,obs=[],phase=-1,currentTrack="",lastBirdLow=false;
 
 const d={x:90,y:237,width:42,height:48,v:0,j:0,step:0};
 
-function music(n){
- let a=n?night:day;
- if(currentMusic===a)return;
- day.pause();night.pause();day.currentTime=0;night.currentTime=0;
- currentMusic=a;
- a.volume=.25;
- a.play().catch(()=>{});
+function unlock(){
+ try{
+  A=A||new(window.AudioContext||window.webkitAudioContext)();
+  if(A.state==="suspended")A.resume();
+ }catch(e){}
 }
 
 function beep(f,t,type="square",v=.05){
  try{
-  let A=new(window.AudioContext||window.webkitAudioContext),o=A.createOscillator(),q=A.createGain();
-  o.type=type;o.frequency.value=f;q.gain.value=v;o.connect(q);q.connect(A.destination);o.start();
-  q.gain.exponentialRampToValueAtTime(.001,A.currentTime+t);o.stop(A.currentTime+t);
+  unlock();
+  if(!A)return;
+  let o=A.createOscillator(),q=A.createGain();
+  o.type=type;
+  o.frequency.value=f;
+  q.gain.value=v;
+  o.connect(q);
+  q.connect(A.destination);
+  o.start();
+  q.gain.exponentialRampToValueAtTime(.001,A.currentTime+t);
+  o.stop(A.currentTime+t);
  }catch(e){}
 }
 
+function playMusic(night){
+ let file=night?"noche.mp3":"dia.mp3";
+ if(currentTrack===file&&!music.paused)return;
+
+ currentTrack=file;
+ music.pause();
+ music.src=file;
+ music.volume=.3;
+ music.load();
+
+ let p=music.play();
+ if(p)p.catch(()=>{});
+}
+
 function reset(){
- score=0;frame=0;last=0;timer=55;speed=6;obs=[];run=1;over=0;phase=0;
- d.y=g-d.height;d.v=0;d.j=0;d.step=0;
+ unlock();
+
+ score=0;
+ frame=0;
+ last=0;
+ timer=45;
+ speed=6;
+ obs=[];
+ run=1;
+ over=0;
+ phase=0;
+ currentTrack="";
+ lastBirdLow=false;
+
+ d.y=g-d.height;
+ d.v=0;
+ d.j=0;
+ d.step=0;
+
  document.body.classList.remove("dark");
  sp.textContent="🌞 Velocidad 6.00";
  st.textContent="CORRE...";
- music(false);
+
+ playMusic(false);
  beep(500,.07);
+
  requestAnimationFrame(loop);
 }
 
 function jump(){
- if(!run||over){reset();return}
- if(!d.j){d.v=-13;d.j=1;beep(520,.07)}
+ unlock();
+
+ if(!run||over){
+  reset();
+  return;
+ }
+
+ if(!d.j){
+  d.v=-13;
+  d.j=1;
+  beep(520,.07);
+ }
 }
 
 function cactus(z,big=false){
  let h=big?52:38,w=big?25:20;
- obs.push({type:"cactus",x:z,y:g-h,width:w,height:h})
+ obs.push({type:"cactus",x:z,y:g-h,width:w,height:h});
 }
 
 function bird(z,low){
  let y=low?225+Math.random()*7:125+Math.random()*8;
- obs.push({type:"bird",x:z,y:y,baseY:y,phase:Math.random()*6.28,width:44,height:24,flap:0})
+
+ obs.push({
+  type:"bird",
+  x:z,
+  y:y,
+  baseY:y,
+  phase:Math.random()*6.28,
+  width:44,
+  height:24,
+  flap:0,
+  low:low
+ });
+
+ lastBirdLow=low;
 }
 
-/* SPAWN DISTRIBUIDO */
+/* SPAWN */
 function spawn(){
- let nightMode=score>=500,r=Math.random(),dif=Math.min(1,(score-500)/3000),z=c.width+45;
+ let night=score>=500;
+ let r=Math.random();
+ let dif=Math.min(1,Math.max(0,(score-500)/3000));
+ let z=c.width+45;
 
- if(!nightMode){
-  /* Antes de 500 solo cactus */
-  if(r<.25){
-   cactus(z,true);
-  }else if(r<.75){
-   cactus(z);
-  }else{
-   cactus(z);
-   cactus(z+55+Math.random()*25);
-  }
- }else{
-  /*
-   Distancia mínima basada en velocidad.
-   El dino tiene tiempo suficiente para saltar y aterrizar.
-  */
-  let gap=Math.max(205,speed*31);
+ if(!night){
+
+  /* DÍA: solo cactus */
 
   if(r<.18){
-   /* cactus */
-   cactus(z,Math.random()<.25);
-  }
-  else if(r<.34){
-   /* pájaro alto */
-   bird(z,false);
-  }
-  else if(r<.50){
-   /* pájaro bajo */
-   bird(z,true);
-  }
-  else if(r<.65){
-   /* cactus + pájaro separado */
-   cactus(z,Math.random()<.2);
-   bird(z+gap+30+Math.random()*45,Math.random()<.5);
-  }
-  else if(r<.78){
-   /* pájaro + cactus separado */
-   bird(z,Math.random()<.5);
-   cactus(z+gap+20+Math.random()*50,Math.random()<.2);
-  }
-  else if(r<.90){
-   /* dos cactus, dificultad progresiva */
+   cactus(z,true);
+
+  }else if(r<.48){
    cactus(z);
-   cactus(z+55+Math.random()*30);
-  }
-  else{
-   /*
-    Dos pájaros, pero MUY separados.
-    Nunca quedan uno encima del otro.
-   */
-   bird(z,false);
-   bird(z+gap+60+Math.random()*70,true);
+
+  }else if(r<.72){
+   cactus(z);
+   cactus(z+52+Math.random()*28);
+
+  }else if(r<.86){
+   cactus(z);
+   cactus(z+52+Math.random()*25);
+   cactus(z+108+Math.random()*30);
+
+  }else{
+   cactus(z,true);
+   cactus(z+60+Math.random()*35);
   }
 
-  /* A partir de 1500 aparecen secuencias algo más difíciles */
-  if(score>=1500&&Math.random()<.18+dif*.12){
-   let extra=gap+80+Math.random()*70;
-   if(Math.random()<.5)cactus(z+extra);
-   else bird(z+extra,Math.random()<.5);
+ }else{
+
+  /*
+   Distancia entre obstáculos.
+   Aumenta con la velocidad para que el salto
+   siempre tenga margen.
+  */
+  let gap=Math.max(215,speed*32);
+
+  /*
+   0-17% cactus
+   17-31% pájaro alto
+   31-43% pájaro bajo
+   43-58% cactus + pájaro
+   58-73% pájaro + cactus
+   73-88% cactus múltiples
+   88-100% secuencia de pájaros
+  */
+
+  if(r<.17){
+
+   cactus(z,Math.random()<.22);
+
+  }else if(r<.31){
+
+   /* PÁJARO ALTO */
+   bird(z,false);
+
+  }else if(r<.43){
+
+   /*
+    PÁJARO BAJO.
+    Nunca ponemos otro pájaro bajo inmediatamente
+    después.
+   */
+   if(lastBirdLow){
+    cactus(z);
+   }else{
+    bird(z,true);
+   }
+
+  }else if(r<.58){
+
+   /* CACTUS + PÁJARO */
+   cactus(z,Math.random()<.2);
+
+   let bLow=Math.random()<.45;
+
+   bird(z+gap+30+Math.random()*50,bLow);
+
+  }else if(r<.73){
+
+   /* PÁJARO + CACTUS */
+   let bLow=lastBirdLow?false:Math.random()<.5;
+
+   bird(z,bLow);
+
+   cactus(
+    z+gap+25+Math.random()*55,
+    Math.random()<.2
+   );
+
+  }else if(r<.88){
+
+   /*
+    HASTA 3 CACTUS SEGUIDOS.
+   */
+   let n=2+Math.floor(Math.random()*2);
+
+   for(let i=0;i<n;i++){
+    cactus(
+     z+i*(53+Math.random()*22),
+     Math.random()<.15
+    );
+   }
+
+  }else{
+
+   /*
+    SECUENCIA DE PÁJAROS.
+    Nunca dos bajos consecutivos.
+   */
+   bird(z,false);
+
+   let secondLow=Math.random()<.5;
+
+   bird(
+    z+gap+50+Math.random()*60,
+    secondLow
+   );
+
+   /*
+    Tercer pájaro opcional.
+    Si el segundo fue bajo, el tercero será alto.
+   */
+   if(score>=1800&&Math.random()<.28){
+    bird(
+     z+(gap+50+Math.random()*60)*2,
+     secondLow?false:Math.random()<.35
+    );
+   }
+  }
+
+  /*
+   Dificultad adicional después de 1500,
+   pero sin pegar obstáculos.
+  */
+  if(score>=1500&&Math.random()<.16+dif*.12){
+
+   let extra=gap+90+Math.random()*80;
+
+   if(Math.random()<.5){
+
+    cactus(extra+z);
+
+   }else{
+
+    let low=!lastBirdLow&&Math.random()<.4;
+    bird(extra+z,low);
+
+   }
   }
  }
 
- /* Tiempo hasta el siguiente spawn */
- let base=score<500?52:46-dif*9;
- let variation=score<500?32:25-dif*7;
- timer=Math.max(31,Math.floor(base+Math.random()*variation));
+ /*
+  Tiempo de spawn.
+  No deja espacios gigantes.
+ */
+ let base=score<500?43:39-dif*7;
+ let variation=score<500?25:23-dif*6;
+
+ timer=Math.max(
+  28,
+  Math.floor(base+Math.random()*variation)
+ );
 }
 
 function hit(a,b){
- let p=b.type=="bird"?6:4;
- return a.x+p<b.x+b.width-p&&
- a.x+a.width-p>b.x+p&&
- a.y+p<b.y+b.height-p&&
+ let p=b.type==="bird"?6:4;
+
+ return a.x+p<b.x+b.width-p &&
+ a.x+a.width-p>b.x+p &&
+ a.y+p<b.y+b.height-p &&
  a.y+a.height-p>b.y+p;
 }
 
 function update(){
+
  frame++;
  score+=.1;
 
- /* Velocidad */
+ /* VELOCIDAD */
  let m=Math.floor(score/100)*100;
+
  if(m>last){
+
   last=m;
+
   speed+=m>=500?.75:.5;
+
   beep(660,.07);
-  sp.textContent=(score>=500?(phase%2?"🌑 ":"🌞 "):"🌞 ")+"Velocidad "+speed.toFixed(2);
+
+  sp.textContent=
+   (phase%2?"🌑 ":"🌞 ")+"Velocidad "+speed.toFixed(2);
  }
 
- /* Cambio día/noche cada 500 */
+ /* CAMBIO CADA 500 */
  let p=Math.floor(score/500);
+
  if(p!==phase){
+
   phase=p;
-  let nightMode=p%2===1;
-  document.body.classList.toggle("dark",nightMode);
-  music(nightMode);
-  sp.textContent=(nightMode?"🌑 NOCHE · ":"🌞 DÍA · ")+"Velocidad "+speed.toFixed(2);
-  beep(nightMode?180:700,.15,nightMode?"sawtooth":"sine",.06);
+
+  let night=p%2===1;
+
+  document.body.classList.toggle("dark",night);
+
+  playMusic(night);
+
+  sp.textContent=
+   (night?"🌑 NOCHE · ":"🌞 DÍA · ")+"Velocidad "+speed.toFixed(2);
+
+  beep(
+   night?180:700,
+   .15,
+   night?"sawtooth":"sine",
+   .055
+  );
  }
 
  if(--timer<=0)spawn();
 
- /* Física */
+ /* FÍSICA */
  d.v+=.65;
  d.y+=d.v;
 
  if(d.y>=g-d.height){
+
   d.y=g-d.height;
   d.v=0;
   d.j=0;
+
  }else d.j=1;
 
  if(!d.j)d.step++;
 
- /* Obstáculos */
+ /* OBSTÁCULOS */
  for(let o of obs){
+
   o.x-=speed;
 
-  if(o.type=="bird"){
+  if(o.type==="bird"){
+
    o.flap++;
    o.phase+=.09;
+
+   /* vuelo vertical */
    o.y=o.baseY+Math.sin(o.phase)*10;
   }
  }
 
+ /* COLISIONES */
  for(let o of obs){
+
   if(hit(d,o)){
+
    over=1;
    run=0;
-   hi=Math.max(hi,Math.floor(score));
-   st.textContent="💀 PERDISTE · TOCA PARA REINICIAR";
-   day.pause();
-   night.pause();
-   beep(120,.35,"sawtooth",.08);
+
+   hi=Math.max(
+    hi,
+    Math.floor(score)
+   );
+
+   st.textContent=
+    "💀 PERDISTE · TOCA PARA REINICIAR";
+
+   music.pause();
+
+   beep(
+    120,
+    .35,
+    "sawtooth",
+    .08
+   );
+
    return;
   }
  }
 
- obs=obs.filter(o=>o.x+o.width>-40);
+ obs=obs.filter(
+  o=>o.x+o.width>-40
+ );
 }
 
 function dino(){
- let X=d.x,Y=d.y,k=document.body.classList.contains("dark");
+
+ let X=d.x,Y=d.y;
+ let k=document.body.classList.contains("dark");
+
  x.fillStyle=k?"#fff":"#111";
+
  x.fillRect(X+9,Y+13,25,29);
  x.fillRect(X+27,Y+4,13,23);
  x.fillRect(X+36,Y+10,9,6);
+
  x.fillStyle=k?"#080808":"#f7f7f7";
  x.fillRect(X+35,Y+8,3,3);
+
  x.fillStyle=k?"#fff":"#111";
  x.fillRect(X,Y+21,10,7);
+
  let l=d.step%2;
- x.fillRect(X+12,Y+39,7,8+l*5);
- x.fillRect(X+27,Y+39,7,13-l*5);
+
+ x.fillRect(
+  X+12,Y+39,7,8+l*5
+ );
+
+ x.fillRect(
+  X+27,Y+39,7,13-l*5
+ );
 }
 
 function drawBird(o){
+
  let k=document.body.classList.contains("dark");
+
  x.fillStyle=k?"#fff":"#111";
 
  /* cuerpo */
- x.fillRect(o.x+8,o.y+8,27,10);
+ x.fillRect(
+  o.x+8,
+  o.y+8,
+  27,
+  10
+ );
 
  /* cabeza */
- x.fillRect(o.x+30,o.y+3,12,12);
+ x.fillRect(
+  o.x+30,
+  o.y+3,
+  12,
+  12
+ );
 
- /* alas animadas */
+ /* alas */
  let u=Math.floor(o.flap/7)%2===0;
- x.fillRect(o.x+2,o.y+(u?0:15),21,6);
- x.fillRect(o.x+34,o.y+(u?15:0),18,6);
+
+ x.fillRect(
+  o.x+2,
+  o.y+(u?0:15),
+  21,
+  6
+ );
+
+ x.fillRect(
+  o.x+34,
+  o.y+(u?15:0),
+  18,
+  6
+ );
 
  /* pico */
- x.fillRect(o.x+41,o.y+9,8,4);
+ x.fillRect(
+  o.x+41,
+  o.y+9,
+  8,
+  4
+ );
 
  /* ojo */
  x.fillStyle=k?"#080808":"#f7f7f7";
- x.fillRect(o.x+35,o.y+5,3,3);
+
+ x.fillRect(
+  o.x+35,
+  o.y+5,
+  3,
+  3
+ );
 }
 
 function draw(){
+
  let k=document.body.classList.contains("dark");
 
- x.clearRect(0,0,c.width,c.height);
+ x.clearRect(
+  0,0,c.width,c.height
+ );
+
  x.fillStyle=k?"#080808":"#f7f7f7";
- x.fillRect(0,0,c.width,c.height);
+
+ x.fillRect(
+  0,0,c.width,c.height
+ );
 
  /* suelo */
  x.strokeStyle=k?"#fff":"#111";
  x.lineWidth=2;
+
  x.beginPath();
  x.moveTo(0,g+2);
  x.lineTo(c.width,g+2);
  x.stroke();
 
- /* líneas del suelo */
+ /* suelo moviéndose */
  x.fillStyle=k?"#aaa":"#bbb";
- for(let i=0;i<c.width;i+=55)
-  x.fillRect(i-(frame*speed)%55,g+13,24,2);
 
- /* sol / luna */
+ for(
+  let i=0;
+  i<c.width;
+  i+=55
+ ){
+
+  x.fillRect(
+   i-(frame*speed)%55,
+   g+13,
+   24,
+   2
+  );
+ }
+
+ /* SOL */
  if(!k){
+
   x.fillStyle="#d7d7d7";
+
   x.beginPath();
+
   x.arc(140,75,22,0,7);
   x.arc(165,75,28,0,7);
   x.arc(194,78,20,0,7);
+
   x.fill();
+
  }else{
+
+  /* LUNA */
   x.fillStyle="#ddd";
+
   x.beginPath();
   x.arc(760,62,27,0,7);
   x.fill();
+
   x.fillStyle="#080808";
+
   x.beginPath();
   x.arc(772,54,25,0,7);
   x.fill();
  }
 
- /* obstáculos */
+ /* OBSTÁCULOS */
  for(let o of obs){
-  if(o.type=="bird"){
+
+  if(o.type==="bird"){
+
    drawBird(o);
+
   }else{
+
    x.fillStyle=k?"#fff":"#1f7a3a";
-   x.fillRect(o.x,o.y,o.width,o.height);
-   x.fillRect(o.x-7,o.y+12,9,6);
-   x.fillRect(o.x+o.width-2,o.y+22,8,6);
+
+   x.fillRect(
+    o.x,
+    o.y,
+    o.width,
+    o.height
+   );
+
+   x.fillRect(
+    o.x-7,
+    o.y+12,
+    9,
+    6
+   );
+
+   x.fillRect(
+    o.x+o.width-2,
+    o.y+22,
+    8,
+    6
+   );
   }
  }
 
  dino();
 
- /* marcador */
+ /* PUNTOS */
  x.fillStyle=k?"#fff":"#111";
  x.font="bold 18px monospace";
  x.textAlign="right";
- x.fillText("HI "+hi+"   "+Math.floor(score),c.width-18,30);
 
+ x.fillText(
+  "HI "+hi+"   "+Math.floor(score),
+  c.width-18,
+  30
+ );
+
+ /* INICIO */
  if(!run&&!over&&!score){
+
   x.textAlign="center";
+
   x.font="bold 25px monospace";
-  x.fillText("TOCA O PRESIONA ESPACIO",c.width/2,150);
+
+  x.fillText(
+   "TOCA O PRESIONA ESPACIO",
+   c.width/2,
+   150
+  );
+
   x.font="15px monospace";
-  x.fillText("500 = 🌑 · 🐦 · MÁS VELOCIDAD",c.width/2,180);
+
+  x.fillText(
+   "500 = 🌑 · 🐦 · MÁS VELOCIDAD",
+   c.width/2,
+   180
+  );
  }
 
+ /* GAME OVER */
  if(over){
+
   x.fillStyle=k?"#fff":"#111";
+
   x.textAlign="center";
+
   x.font="bold 30px monospace";
-  x.fillText("GAME OVER",c.width/2,145);
+
+  x.fillText(
+   "GAME OVER",
+   c.width/2,
+   145
+  );
+
   x.font="16px monospace";
-  x.fillText("Puntos: "+Math.floor(score)+" · toca para volver a jugar",c.width/2,175);
+
+  x.fillText(
+   "Puntos: "+Math.floor(score)+" · toca para volver a jugar",
+   c.width/2,
+   175
+  );
  }
 }
 
 function loop(){
+
  if(!run&&!over){
+
   draw();
   return;
  }
+
  if(!over){
+
   update();
   draw();
+
   requestAnimationFrame(loop);
- }else draw();
+
+ }else{
+
+  draw();
+ }
 }
 
-c.addEventListener("pointerdown",e=>{
- e.preventDefault();
- jump();
-},{passive:false});
-
-document.addEventListener("keydown",e=>{
- if(e.code=="Space"||e.code=="ArrowUp"){
+/* PRIMER TOQUE: desbloquea audio */
+c.addEventListener(
+ "pointerdown",
+ e=>{
   e.preventDefault();
+  unlock();
   jump();
+ },
+ {passive:false}
+);
+
+/* TECLADO */
+document.addEventListener(
+ "keydown",
+ e=>{
+
+  if(
+   e.code==="Space"||
+   e.code==="ArrowUp"
+  ){
+
+   e.preventDefault();
+   jump();
+  }
  }
-});
+);
 
 draw();
 </script></body></html>
