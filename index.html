@@ -3,7 +3,7 @@
 <meta property="og:title" content="DINO GAME - 00000 BEST 00000 Speed 5.0x">
 <meta property="og:description" content="🦖 Toca para jugar · El dino corre dentro de WhatsApp">
 <meta property="og:image" content="https://i.imgur.com/QvUXmt2.png">
-<meta property="og:url" content="https://danicam2374.github.io/Dino.1/">
+<meta property="og:url" content="https://saurio.vercel.app/">
 <style>
 body{margin:0;background:#f7f7f7;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:monospace;transition:.5s}body.dark{background:#080808}#gameContainer{width:min(900px,96vw);text-align:center}canvas{width:100%;height:auto;display:block;border:2px solid #111;border-radius:10px;background:#f7f7f7;touch-action:none;user-select:none}body.dark canvas{background:#080808;border-color:#fff}#info{display:flex;justify-content:space-between;margin-top:8px;font-size:13px;color:#555}body.dark #info{color:#ccc}
 #shareBtn{display:none;margin-top:12px;padding:10px 22px;background:#25D366;color:#fff;border:none;border-radius:25px;font-weight:bold;font-size:15px;cursor:pointer}
@@ -36,31 +36,4 @@ function update(){
  frame++;score+=.1;let m=Math.floor(score/100)*100;if(m>last){last=m;speed+=m>=500?.75:.5;beep(660,.07);sp.textContent=(phase%2?"🌑 ":"🌞 ")+"Velocidad "+speed.toFixed(2);}
  let p=Math.floor(score/500);if(p!==phase){phase=p;let night=p%2===1;document.body.classList.toggle("dark",night);playMusic(night);sp.textContent=(night?"🌑 NOCHE · ":"🌞 DÍA · ")+"Velocidad "+speed.toFixed(2);beep(night?180:700,.15,night?"sawtooth":"sine",.055);}
  if(--timer<=0)spawn();
- d.v+=.65;d.y+=d.v;if(d.y>=g-d.height){d.y=g-d.height;d.v=0;d.j=0;}else d.j=1;if(!d.j)d.step++;
- for(let o of obs){o.x-=speed;if(o.type==="bird"){o.flap++;o.phase+=.09;o.y=o.baseY+Math.sin(o.phase)*10;}}
- for(let o of obs){if(hit(d,o)){over=1;run=0;hi=Math.max(hi,Math.floor(score));localStorage.setItem('dino_hi',hi);st.textContent="💀 PERDISTE · TOCA PARA REINICIAR";document.getElementById('shareBtn').style.display='inline-block';music.pause();beep(120,.35,"sawtooth",.08);return;}}
- obs=obs.filter(o=>o.x+o.width>-40);
- document.title=`DINO GAME - ${Math.floor(score).toString().padStart(5,'0')} BEST ${hi.toString().padStart(5,'0')} Speed ${speed.toFixed(1)}x`;
-}
-function dino(){let X=d.x,Y=d.y;let k=document.body.classList.contains("dark");x.fillStyle=k?"#fff":"#111";x.fillRect(X+9,Y+13,25,29);x.fillRect(X+27,Y+4,13,23);x.fillRect(X+36,Y+10,9,6);x.fillStyle=k?"#080808":"#f7f7f7";x.fillRect(X+35,Y+8,3,3);x.fillStyle=k?"#fff":"#111";x.fillRect(X,Y+21,10,7);let l=d.step%2;x.fillRect(X+12,Y+39,7,8+l*5);x.fillRect(X+27,Y+39,7,13-l*5);}
-function drawBird(o){let k=document.body.classList.contains("dark");x.fillStyle=k?"#fff":"#111";x.fillRect(o.x+8,o.y+8,27,10);x.fillRect(o.x+30,o.y+3,12,12);let u=Math.floor(o.flap/7)%2===0;x.fillRect(o.x+2,o.y+(u?0:15),21,6);x.fillRect(o.x+34,o.y+(u?15:0),18,6);x.fillRect(o.x+41,o.y+9,8,4);x.fillStyle=k?"#080808":"#f7f7f7";x.fillRect(o.x+35,o.y+5,3,3);}
-function draw(){
- let k=document.body.classList.contains("dark");x.clearRect(0,0,c.width,c.height);x.fillStyle=k?"#080808":"#f7f7f7";x.fillRect(0,0,c.width,c.height);
- x.strokeStyle=k?"#fff":"#111";x.lineWidth=2;x.beginPath();x.moveTo(0,g+2);x.lineTo(c.width,g+2);x.stroke();
- x.fillStyle=k?"#aaa":"#bbb";for(let i=0;i<c.width;i+=55){x.fillRect(i-(frame*speed)%55,g+13,24,2);}
- if(!k){x.fillStyle="#d7d7d7";x.beginPath();x.arc(140,75,22,0,7);x.arc(165,75,28,0,7);x.arc(194,78,20,0,7);x.fill();}else{x.fillStyle="#ddd";x.beginPath();x.arc(760,62,27,0,7);x.fill();x.fillStyle="#080808";x.beginPath();x.arc(772,54,25,0,7);x.fill();}
- for(let o of obs){if(o.type==="bird"){drawBird(o);}else{x.fillStyle=k?"#fff":"#1f7a3a";x.fillRect(o.x,o.y,o.width,o.height);x.fillRect(o.x-7,o.y+12,9,6);x.fillRect(o.x+o.width-2,o.y+22,8,6);}}
- dino();x.fillStyle=k?"#fff":"#111";x.font="bold 18px monospace";x.textAlign="right";x.fillText("HI "+hi+"   "+Math.floor(score),c.width-18,30);
- if(!run&&!over&&!score){x.textAlign="center";x.font="bold 25px monospace";x.fillText("TOCA O PRESIONA ESPACIO",c.width/2,150);x.font="15px monospace";x.fillText("500 = 🌑 · 🐦 · MÁS VELOCIDAD",c.width/2,180);}
- if(over){x.fillStyle=k?"#fff":"#111";x.textAlign="center";x.font="bold 30px monospace";x.fillText("GAME OVER",c.width/2,145);x.font="16px monospace";x.fillText("Puntos: "+Math.floor(score)+" · toca para volver a jugar",c.width/2,175);}
-}
-function loop(){if(!run&&!over){draw();return;}if(!over){update();draw();requestAnimationFrame(loop);}else{draw();}}
-function shareScore(){
-  const s=Math.floor(score);
-  const txt=`🦖 Mi score en DINO: ${s} pts - Vel ${speed.toFixed(1)}x - Juega: https://danicam2374.github.io/Dino.1/`;
-  window.open(`https://wa.me/?text=${encodeURIComponent(txt)}`,'_blank');
-}
-c.addEventListener("pointerdown",e=>{e.preventDefault();unlock();jump();},{passive:false});
-document.addEventListener("keydown",e=>{if(e.code==="Space"||e.code==="ArrowUp"){e.preventDefault();jump();}});
-draw();
-</script></body></html>
+ d.v+=.65;d.y+=d.v;if(d.y>=
