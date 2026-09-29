@@ -2,98 +2,733 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>DINO GAME - 00000</title>
+
 <meta property="og:title" content="DINO GAME - 00000 BEST 00000 Speed 5.0x">
 <meta property="og:description" content="🦖 Toca para jugar · El dino corre dentro de WhatsApp">
 <meta property="og:image" content="https://upload.wikimedia.org/wikipedia/commons/8/8e/Chrome_Dino_Game.png">
 <meta property="og:image:width" content="512">
 <meta property="og:image:height" content="512">
 <meta property="og:url" content="https://saurio.vercel.app/">
+
 <style>
-body{margin:0;background:#f7f7f7;display:flex;justify-content:center;align-items:center;min-height:100vh;font-family:monospace;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
-#gameContainer{width:min(900px,96vw);text-align:center}
-canvas{width:100%;height:auto;display:block;border:3px solid #000;border-radius:10px;background:#fff;touch-action:none;user-select:none}
-#info{display:flex;justify-content:space-between;margin-top:8px;font-size:14px;color:#000;font-weight:bold}
-#shareBtn{display:none;margin-top:12px;padding:10px 22px;background:#25D366;color:#fff;border:none;border-radius:25px;font-weight:bold}
-body.dark{background:#111} body.dark canvas{background:#111;border-color:#fff} body.dark #info{color:#fff}
+body{
+  margin:0;
+  background:#f7f7f7;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  min-height:100vh;
+  font-family:monospace;
+  overscroll-behavior:none;
+  -webkit-tap-highlight-color:transparent;
+}
+
+#gameContainer{
+  width:min(900px,96vw);
+  text-align:center;
+}
+
+canvas{
+  width:100%;
+  height:auto;
+  display:block;
+  border:3px solid #000;
+  border-radius:10px;
+  background:#fff;
+  touch-action:none;
+  user-select:none;
+}
+
+#info{
+  display:flex;
+  justify-content:space-between;
+  margin-top:8px;
+  font-size:14px;
+  color:#000;
+  font-weight:bold;
+}
+
+#shareBtn{
+  display:none;
+  margin-top:12px;
+  padding:10px 22px;
+  background:#25D366;
+  color:#fff;
+  border:none;
+  border-radius:25px;
+  font-weight:bold;
+}
+
+body.dark{
+  background:#111;
+}
+
+body.dark canvas{
+  background:#111;
+  border-color:#fff;
+}
+
+body.dark #info{
+  color:#fff;
+}
 </style>
 </head>
+
 <body>
+
 <div id="gameContainer">
-<canvas id="gameCanvas" width="900" height="350"></canvas>
-<div id="info"><span id="status">TOCA LA PANTALLA PARA EMPEZAR</span><span id="speedText">🌞 6.00</span></div>
-<button id="shareBtn" onclick="shareScore()">📤 ENVIAR SCORE</button>
+
+  <canvas id="gameCanvas" width="900" height="350"></canvas>
+
+  <div id="info">
+    <span id="status">TOCA LA PANTALLA PARA EMPEZAR</span>
+    <span id="speedText">🌞 6.00</span>
+  </div>
+
+  <button id="shareBtn" onclick="shareScore()">
+    📤 ENVIAR SCORE
+  </button>
+
 </div>
+
 <script>
-const c=document.getElementById("gameCanvas"),x=c.getContext("2d"),st=document.getElementById("status"),sp=document.getElementById("speedText");
-let run=0,over=0,score=0,hi=parseInt(localStorage.getItem('dino_hi')||0),frame=0,timer=50,speed=6,obs=[],phase=0;
-const g=285; const d={x:90,y:237,w:44,h:47,v:0,j:0,step:0};
+
+const c = document.getElementById("gameCanvas");
+const x = c.getContext("2d");
+
+const st = document.getElementById("status");
+const sp = document.getElementById("speedText");
+
+let run = 0;
+let over = 0;
+let score = 0;
+let hi = parseInt(localStorage.getItem("dino_hi") || 0);
+let frame = 0;
+let timer = 50;
+let speed = 6;
+let obs = [];
+let phase = 0;
+
+const g = 285;
+
+const d = {
+  x:90,
+  y:237,
+  w:44,
+  h:47,
+  v:0,
+  j:0,
+  step:0
+};
+
 
 function reset(){
- score=0;frame=0;timer=50;speed=6;obs=[];run=1;over=0;phase=0;
- d.y=237;d.v=0;d.j=0;document.body.classList.remove("dark");
- st.textContent="¡CORRE!"; document.getElementById('shareBtn').style.display='none';
- requestAnimationFrame(loop);
+
+  score = 0;
+  frame = 0;
+  timer = 50;
+  speed = 6;
+  obs = [];
+  run = 1;
+  over = 0;
+  phase = 0;
+
+  d.y = 237;
+  d.v = 0;
+  d.j = 0;
+
+  document.body.classList.remove("dark");
+
+  st.textContent = "¡CORRE!";
+
+  document.getElementById("shareBtn").style.display = "none";
+
+  requestAnimationFrame(loop);
 }
+
+
 function jump(){
- if(!run||over){reset();return;}
- if(!d.j){d.v=-13;d.j=1;}
+
+  if(!run || over){
+    reset();
+    return;
+  }
+
+  if(!d.j){
+    d.v = -13;
+    d.j = 1;
+  }
 }
+
+
 function spawn(){
- let z=950; let r=Math.random();
- if(score<500){
-  if(r<.5){obs.push({x:z,y:g-38,w:20,h:38});}
-  else{obs.push({x:z,y:g-38,w:20,h:38}); obs.push({x:z+55,y:g-38,w:20,h:38});}
- }else{
-  if(r<.4){obs.push({x:z,y:g-38,w:20,h:38});}
-  else if(r<.7){obs.push({x:z,y:150+Math.random()*30,w:44,h:24,t:'bird',f:0});}
-  else{obs.push({x:z,y:g-38,w:20,h:38}); obs.push({x:z+220,y:130,w:44,h:24,t:'bird',f:0});}
- }
- timer=45+Math.random()*30;
+
+  let z = 950;
+  let r = Math.random();
+
+  if(score < 500){
+
+    if(r < 0.5){
+
+      obs.push({
+        x:z,
+        y:g-38,
+        w:20,
+        h:38
+      });
+
+    }else{
+
+      obs.push({
+        x:z,
+        y:g-38,
+        w:20,
+        h:38
+      });
+
+      obs.push({
+        x:z+55,
+        y:g-38,
+        w:20,
+        h:38
+      });
+
+    }
+
+  }else{
+
+    if(r < 0.4){
+
+      obs.push({
+        x:z,
+        y:g-38,
+        w:20,
+        h:38
+      });
+
+    }else if(r < 0.7){
+
+      obs.push({
+        x:z,
+        y:150+Math.random()*30,
+        w:44,
+        h:24,
+        t:"bird",
+        f:0
+      });
+
+    }else{
+
+      obs.push({
+        x:z,
+        y:g-38,
+        w:20,
+        h:38
+      });
+
+      obs.push({
+        x:z+220,
+        y:130,
+        w:44,
+        h:24,
+        t:"bird",
+        f:0
+      });
+
+    }
+
+  }
+
+  timer = 45 + Math.random()*30;
 }
-function hit(a,b){return a.x<b.x+b.w && a.x+a.w>b.x && a.y<b.y+b.h && a.y+a.h>b.y;}
+
+
+function hit(a,b){
+
+  return (
+    a.x < b.x+b.w &&
+    a.x+a.w > b.x &&
+    a.y < b.y+b.h &&
+    a.y+a.h > b.y
+  );
+
+}
+
+
 function update(){
- frame++; score+=0.15;
- if(Math.floor(score)%100==0 && score>5){speed+=0.2; sp.textContent="Vel "+speed.toFixed(2);}
- if(score>500 && Math.floor(score)%500==0){document.body.classList.toggle("dark"); sp.textContent=(document.body.classList.contains("dark")?"🌑 NOCHE ":"🌞 DÍA ")+speed.toFixed(2);}
- if(--timer<=0)spawn();
- d.v+=0.75; d.y+=d.v;
- if(d.y>=g-d.h){d.y=g-d.h; d.v=0; d.j=0;} else d.j=1;
- if(!d.j)d.step++;
- for(let o of obs){o.x-=speed; if(o.t=='bird')o.f++;}
- for(let o of obs){if(hit({x:d.x,y:d.y,w:d.w,h:d.h},o)){over=1;run=0;hi=Math.max(hi,Math.floor(score));localStorage.setItem('dino_hi',hi);st.textContent="💀 PERDISTE - TOCA PARA REINICIAR";document.getElementById('shareBtn').style.display='inline-block';return;}}
- obs=obs.filter(o=>o.x>-50);
- document.title=`DINO GAME - ${Math.floor(score).toString().padStart(5,'0')} BEST ${hi.toString().padStart(5,'0')}`;
+
+  frame++;
+
+  score += 0.15;
+
+  if(Math.floor(score)%100 === 0 && score > 5){
+
+    speed += 0.2;
+
+    sp.textContent = "Vel " + speed.toFixed(2);
+
+  }
+
+
+  if(score > 500 && Math.floor(score)%500 === 0){
+
+    document.body.classList.toggle("dark");
+
+    sp.textContent =
+      (document.body.classList.contains("dark")
+      ? "🌑 NOCHE "
+      : "🌞 DÍA ")
+      + speed.toFixed(2);
+
+  }
+
+
+  if(--timer <= 0){
+    spawn();
+  }
+
+
+  d.v += 0.75;
+  d.y += d.v;
+
+
+  if(d.y >= g-d.h){
+
+    d.y = g-d.h;
+    d.v = 0;
+    d.j = 0;
+
+  }else{
+
+    d.j = 1;
+
+  }
+
+
+  if(!d.j){
+    d.step++;
+  }
+
+
+  for(let o of obs){
+
+    o.x -= speed;
+
+    if(o.t === "bird"){
+      o.f++;
+    }
+
+  }
+
+
+  for(let o of obs){
+
+    if(
+      hit(
+        {
+          x:d.x,
+          y:d.y,
+          w:d.w,
+          h:d.h
+        },
+        o
+      )
+    ){
+
+      over = 1;
+      run = 0;
+
+      hi = Math.max(
+        hi,
+        Math.floor(score)
+      );
+
+      localStorage.setItem(
+        "dino_hi",
+        hi
+      );
+
+      st.textContent =
+        "💀 PERDISTE - TOCA PARA REINICIAR";
+
+      document.getElementById(
+        "shareBtn"
+      ).style.display = "inline-block";
+
+      return;
+    }
+
+  }
+
+
+  obs = obs.filter(
+    o => o.x > -50
+  );
+
+
+  document.title =
+    `DINO GAME - ${
+      Math.floor(score)
+      .toString()
+      .padStart(5,"0")
+    } BEST ${
+      hi
+      .toString()
+      .padStart(5,"0")
+    }`;
+
 }
+
+
 function drawDino(){
- let isDark=document.body.classList.contains("dark");
- x.fillStyle=isDark?"#fff":"#000";
- x.fillRect(d.x+8,d.y+12,28,28);
- x.fillRect(d.x+28,d.y+2,14,22);
- x.fillRect(d.x+36,d.y+8,10,7);
- x.fillRect(d.x,d.y+22,10,6);
- if(d.j){ x.fillRect(d.x+10,d.y+40,8,10); x.fillRect(d.x+26,d.y+40,8,10); }
- else{
-  if(Math.floor(d.step/5)%2==0){ x.fillRect(d.x+10,d.y+40,8,12); x.fillRect(d.x+26,d.y+40,8,6); }
-  else{ x.fillRect(d.x+10,d.y+40,8,6); x.fillRect(d.x+26,d.y+40,8,12); }
- }
+
+  let isDark =
+    document.body.classList.contains("dark");
+
+  x.fillStyle =
+    isDark ? "#fff" : "#000";
+
+
+  x.fillRect(
+    d.x+8,
+    d.y+12,
+    28,
+    28
+  );
+
+  x.fillRect(
+    d.x+28,
+    d.y+2,
+    14,
+    22
+  );
+
+  x.fillRect(
+    d.x+36,
+    d.y+8,
+    10,
+    7
+  );
+
+  x.fillRect(
+    d.x,
+    d.y+22,
+    10,
+    6
+  );
+
+
+  if(d.j){
+
+    x.fillRect(
+      d.x+10,
+      d.y+40,
+      8,
+      10
+    );
+
+    x.fillRect(
+      d.x+26,
+      d.y+40,
+      8,
+      10
+    );
+
+  }else{
+
+    if(Math.floor(d.step/5)%2 === 0){
+
+      x.fillRect(
+        d.x+10,
+        d.y+40,
+        8,
+        12
+      );
+
+      x.fillRect(
+        d.x+26,
+        d.y+40,
+        8,
+        6
+      );
+
+    }else{
+
+      x.fillRect(
+        d.x+10,
+        d.y+40,
+        8,
+        6
+      );
+
+      x.fillRect(
+        d.x+26,
+        d.y+40,
+        8,
+        12
+      );
+
+    }
+
+  }
+
 }
+
+
 function draw(){
- x.clearRect(0,0,900,350);
- let isDark=document.body.classList.contains("dark");
- x.fillStyle=isDark?"#111":"#fff"; x.fillRect(0,0,900,350);
- x.strokeStyle=isDark?"#fff":"#000"; x.lineWidth=2; x.beginPath(); x.moveTo(0,g); x.lineTo(900,g); x.stroke();
- for(let o of obs){
-  if(o.t=='bird'){ x.fillStyle=isDark?"#fff":"#000"; x.fillRect(o.x,o.y,o.w,o.h); x.fillRect(o.x+30,o.y+2,12,8); }
-  else{ x.fillStyle="#1f7a3a"; x.fillRect(o.x,o.y,o.w,o.h); }
- }
- drawDino();
- x.fillStyle=isDark?"#fff":"#000"; x.font="bold 20px monospace"; x.textAlign="right"; x.fillText(Math.floor(score).toString().padStart(5,'0')+"  HI "+hi.toString().padStart(5,'0'),880,30);
- if(!run && !over){
-  x.textAlign="center"; x.font="bold 26px monospace"; x.fillText("TOCA PARA JUGAR",450,150);
-  x.font="16px monospace"; x.fillText("Toque en cualquier lado",450,180);
- }
- if(over){ x.textAlign="center"; x.font="bold 32px monospace"; x.fillText("GAME OVER",450,150); }
+
+  x.clearRect(
+    0,
+    0,
+    900,
+    350
+  );
+
+
+  let isDark =
+    document.body.classList.contains("dark");
+
+
+  x.fillStyle =
+    isDark ? "#111" : "#fff";
+
+  x.fillRect(
+    0,
+    0,
+    900,
+    350
+  );
+
+
+  x.strokeStyle =
+    isDark ? "#fff" : "#000";
+
+  x.lineWidth = 2;
+
+  x.beginPath();
+
+  x.moveTo(0,g);
+  x.lineTo(900,g);
+
+  x.stroke();
+
+
+  for(let o of obs){
+
+    if(o.t === "bird"){
+
+      x.fillStyle =
+        isDark ? "#fff" : "#000";
+
+      x.fillRect(
+        o.x,
+        o.y,
+        o.w,
+        o.h
+      );
+
+      x.fillRect(
+        o.x+30,
+        o.y+2,
+        12,
+        8
+      );
+
+    }else{
+
+      x.fillStyle = "#1f7a3a";
+
+      x.fillRect(
+        o.x,
+        o.y,
+        o.w,
+        o.h
+      );
+
+    }
+
+  }
+
+
+  drawDino();
+
+
+  x.fillStyle =
+    isDark ? "#fff" : "#000";
+
+  x.font =
+    "bold 20px monospace";
+
+  x.textAlign = "right";
+
+  x.fillText(
+    Math.floor(score)
+      .toString()
+      .padStart(5,"0")
+      + "  HI "
+      + hi
+        .toString()
+        .padStart(5,"0"),
+    880,
+    30
+  );
+
+
+  if(!run && !over){
+
+    x.textAlign = "center";
+
+    x.font =
+      "bold 26px monospace";
+
+    x.fillText(
+      "TOCA PARA JUGAR",
+      450,
+      150
+    );
+
+    x.font =
+      "16px monospace";
+
+    x.fillText(
+      "Toque en cualquier lado",
+      450,
+      180
+    );
+
+  }
+
+
+  if(over){
+
+    x.textAlign = "center";
+
+    x.font =
+      "bold 32px monospace";
+
+    x.fillText(
+      "GAME OVER",
+      450,
+      150
+    );
+
+  }
+
 }
-function loop(){ if(!run&&!over
+
+
+function loop(){
+
+  if(!run && !over){
+
+    draw();
+
+    return;
+  }
+
+
+  if(!over){
+
+    update();
+    draw();
+
+    requestAnimationFrame(loop);
+
+  }else{
+
+    draw();
+
+  }
+
+}
+
+
+function shareScore(){
+
+  let s =
+    Math.floor(score);
+
+  window.open(
+    `https://wa.me/?text=${
+      encodeURIComponent(
+        `🦖 Mi score: ${s} pts - Juega: https://saurio.vercel.app/`
+      )
+    }`,
+    "_blank"
+  );
+
+}
+
+
+/* =========================
+   CONTROL TÁCTIL
+   ========================= */
+
+function handleJump(e){
+
+  if(e){
+
+    e.preventDefault();
+
+  }
+
+  jump();
+
+}
+
+
+/*
+  Un solo listener global.
+  Así no se dispara dos veces por
+  tener pointerdown + touchstart
+  simultáneamente.
+*/
+
+document.addEventListener(
+  "pointerdown",
+  handleJump,
+  {
+    passive:false
+  }
+);
+
+
+/* Teclado */
+
+document.addEventListener(
+  "keydown",
+  e => {
+
+    if(
+      e.code === "Space" ||
+      e.code === "ArrowUp"
+    ){
+
+      e.preventDefault();
+
+      jump();
+
+    }
+
+  }
+);
+
+
+/* Evitar menú contextual */
+
+document.addEventListener(
+  "contextmenu",
+  e => e.preventDefault()
+);
+
+
+/* Iniciar pantalla */
+
+draw();
+
+</script>
+
+</body>
+</html>
